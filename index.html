@@ -2,89 +2,22 @@
 <html>
     
     <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.0/css/bootstrap-combined.min.css" rel="stylesheet">
 
         
     </head>
     
-    <body>
-        <!--Add a button for the user to click to initiate auth sequence -->
-        <button id="authorize-button" style="visibility: hidden">Authorize</button>
-        <script type="text/javascript">
-            var clientId = '968301384489-fv905deok7stelhr7apil483kcjph96v.apps.googleusercontent.com';
-
-            // To enter one or more authentication scopes, refer to the documentation for the API.
-            var scopes = 'https://spreadsheets.google.com/feeds';
-
-
-            function checkAuth() {
-                gapi.auth.authorize({
-                    client_id: clientId,
-                    scope: scopes,
-                    immediate: true
-                }, handleAuthResult);
-            }
-
-
-            function handleAuthResult(authResult) {
-                var authorizeButton = document.getElementById('authorize-button');
-                if (authResult && !authResult.error) {
-                    console.log(authResult);
-                    authorizeButton.style.visibility = 'hidden';
-                    var xhr = new XMLHttpRequest();
-                    var oauthToken = gapi.auth.getToken();
-                    xhr.open('GET', 'https://spreadsheets.google.com/feeds/list/0Agxrt1aeoXHOdEI5a215V2tGUXc3c3d0NTc3ZFlDWGc/od6/private/full');
-                    // we could just query for a particular sensor ?sq=data1=garageDoor
-                    xhr.setRequestHeader('Authorization', 'Bearer ' + oauthToken.access_token);
-                    xhr.send();
-                    
-                    
-                    xhr.onreadystatechange = function() {
-                        
-                        if (xhr.readyState ==4) {
-                            
-                            var xmlDoc = $.parseXML(xhr.responseText);
-                            var $xml = $( xmlDoc );
-                            var $timestamp = $xml.find( "gsx\\:timestamp, timestamp" );
-                            var $sensor = $xml.find( "gsx\\:data1, data1" );
-                            var $status = $xml.find( "gsx\\:data2, data2" );
-                            
-                            console.log($timestamp);
-                            
-                            $timestamp.each(function(i) {
-                                var tRow = $('<tr>');
-                            
-                                var timeCell = $('<td>').text($(this).text());
-                                var sensorCell = $('<td>').text($($sensor[i]).text());
-                                var statusCell = $('<td>').text($($status[i]).text());
-                                
-                                $("#data").append(tRow.append(timeCell).append(sensorCell).append(statusCell));
-                                // append("<td>" + $(this).text() + "</td>");
-                            });
-                        }
-                    }
-                    console.log(xhr.responseText);
-                }
-                else {
-                    authorizeButton.style.visibility = '';
-                    authorizeButton.onclick = handleAuthClick;
-                }
-            }
-
-            function handleAuthClick(event) {
-                gapi.auth.authorize({
-                    client_id: clientId,
-                    scope: scopes,
-                    immediate: false
-                }, handleAuthResult);
-                return false;
-            }
-        </script>
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-        <script src="https://apis.google.com/js/auth.js?onload=checkAuth"></script>
+    <body></body>       
         <div class="container">
+        <!--Add a button for the user to click to initiate auth sequence -->
+        <button id="authorize-button" style="visibility: hidden">Authorize</button>     
         <table id="data" class="table"></table>
         </div>
+        
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script src="js/main.js"></script>
+        <script src="https://apis.google.com/js/auth.js?onload=checkAuth"></script>
 
     </body>
 
