@@ -11,11 +11,34 @@
     <body></body>       
         <div class="container">
         <!--Add a button for the user to click to initiate auth sequence -->
-        <button id="authorize-button" style="visibility: hidden">Authorize</button>     
+        <button id="authorize-button" style="visibility: hidden">Authorize</button>
+
+        <!-- Modal for pin-->
+        <div id="myModal" class="modal hide fade" tabindex="-1" role="dialog"
+        aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
+                <h3 id="myModalLabel">Sensall Setup</h3>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <fieldset>
+                        <label>Enter your pin</label>
+                        <input type="text" id="pinInput">
+                    </fieldset>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary" id="savePin">Save</button>
+            </div>
+        </div>
         <table id="data" class="table"></table>
         </div>
+
         
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
         <script src="js/main.js"></script>
         <script src="https://apis.google.com/js/auth.js?onload=checkAuth"></script>
 

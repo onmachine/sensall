@@ -5,16 +5,35 @@ var scopes = 'https://spreadsheets.google.com/feeds';
 
 var requestURL = 'https://spreadsheets.google.com/feeds/list/0Agxrt1aeoXHOdEI5a215V2tGUXc3c3d0NTc3ZFlDWGc/od6/private/full?reverse=true'
 
-
+var pin = window.localStorage.getItem('pin');
 
 function checkAuth() {
-    gapi.auth.authorize({
-        client_id: clientId,
-        scope: scopes,
-        immediate: true
-    }, handleAuthResult);
+    
+    if (pin === null) {
+        $('#myModal').modal('show');
+        $('#savePin').click(function () {
+            var pinInput = $('#pinInput').val();
+            if (pinInput) {
+                localStorage.setItem('pin', pinInput);
+                pin = window.localStorage.getItem('pin');
+                $('#myModal').modal('hide');
+                checkAuth();
+            }
+        });
+    }
+    
+    else {
+    
+        window.setTimeout(function () {
+            gapi.auth.authorize({
+            client_id: clientId,
+            scope: scopes,
+            immediate: true
+        }, handleAuthResult);
+        },1);
+    
+    }
 }
-
 
 function handleAuthResult(authResult) {
     var authorizeButton = document.getElementById('authorize-button');
@@ -22,9 +41,7 @@ function handleAuthResult(authResult) {
         authorizeButton.style.visibility = 'hidden';
         var xhr = new XMLHttpRequest();
         var oauthToken = gapi.auth.getToken();
-        xhr.open('GET', requestURL);
-        // we could just query for a particular sensor ?sq=data1=garageDoor
-        // 
+        xhr.open('GET', requestURL + '&sq=data3=' + pin);
         xhr.setRequestHeader('Authorization', 'Bearer ' + oauthToken.access_token);
         xhr.send();
         
