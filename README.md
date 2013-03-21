@@ -20,4 +20,4 @@ The Sensor Router uses an HTTP Get to send data to [PushingBox](http://pushingbo
 
 The Google Spreadsheet data is formatted and augmented by client-side HTML5 technologies, which can be hosted anywhere, such as GitHub Pages.
 
-[Example Code](../../tree/gh-pages)
+Example: [HTML](index.html) and [JavaScript](js/main.js)
