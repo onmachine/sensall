@@ -4,21 +4,24 @@
 // MAC address
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 // Ethernet Shield
-//byte mac[] = {  
-//  0x90, 0xA2, 0xDA, 0x0D, 0x3F, 0xD1 };
+byte mac[] = {  
+  0x90, 0xA2, 0xDA, 0x0D, 0x3F, 0xD1 };
 
 // Ethernet Uno
-byte mac[] = {  
-  0x90, 0xA2, 0xDA, 0x0D, 0x60, 0x15 };
+//byte mac[] = {  
+//  0x90, 0xA2, 0xDA, 0x0D, 0x60, 0x15 };
 
 char serverName[] = "api.pushingbox.com";
 const char devid[] = "v56F4F2A48FCB259"; //Scenario
 const char sensorID[] = "garageDoor";
 
+
 // Initialize the Ethernet client library
 // with the IP address and port of the server 
 // that you want to connect to (port 80 is default for HTTP):
 EthernetClient client;
+
+EthernetServer server(80);
 
 
 // xbee serial setup
@@ -47,10 +50,93 @@ void setup() {
   // give the Ethernet shield a second to initialize:
   delay(1000);
   Serial.println("ready");
+  
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
 
 }
 
 void loop() {
+    // listen for incoming clients
+  EthernetClient serverClient = server.available();
+  if (serverClient) {
+    Serial.println("new client");
+    // an http request ends with a blank line
+    boolean currentLineIsBlank = true;
+    char request[60]; // handle up to 60 chars
+    memset(request, 0, 60);
+    int requestIndex = 0;
+    boolean firstLine = true;
+    //const char garageDoorRequest[] = "GET /garageDoor HTTP/1.1";
+    boolean validRequest = false;
+    
+    
+    while (serverClient.connected()) {
+      
+      if (serverClient.available()) {
+        char c = serverClient.read();
+        Serial.write(c);
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request has ended,
+        // so you can send a reply
+        if (c == '\n' && currentLineIsBlank) {
+          // send a standard http response header
+          serverClient.println("HTTP/1.1 200 OK");
+          serverClient.println("Content-Type: text/html");
+          serverClient.println("Connection: close");
+          serverClient.println();
+          serverClient.println("<!DOCTYPE HTML>");
+          serverClient.println("<html>");
+          if (validRequest) {
+            serverClient.print("Valid Request for: ");
+            serverClient.print(request);
+            serverClient.print(" has been initiated!");
+          }
+          else {
+            serverClient.print("Request for: ");
+            serverClient.print(request);
+            serverClient.print(" failed to match a valid sensor");
+          }
+          serverClient.println("</html>");
+          break;
+        }
+        if (c == '\n') {
+          // you're starting a new line
+          currentLineIsBlank = true;
+          // if this is still the first line
+          if (firstLine) {
+            // debug
+            //Serial.print("Request: ");
+            //Serial.println(request);
+            
+            // if the request is for something I know, broadcast the status request on serial
+            // TODO: remove hardcoding and pass off to a parser function.
+            if (strcmp(request, "GET /garageDoor HTTP/1.1") == 0) {
+              Serial.println("^{id:garageDoor;action:status}");
+              validRequest = true;
+            }
+            firstLine = false;  // no more first line
+          }
+          
+        } 
+        else if (c != '\r') {
+          // you've gotten a character on the current line
+          currentLineIsBlank = false;
+          if (firstLine) {
+            request[requestIndex] = c;
+            requestIndex++;
+          }
+        }
+      }
+    }
+    // give the web browser time to receive the data
+    delay(1);
+    // close the connection:
+    serverClient.stop();
+    Serial.println("client disonnected");
+  }
+
+  
   if (packetComplete == true) {
     boolean didSend = parsePacket();
     if (didSend == false) {
@@ -147,4 +233,3 @@ boolean sendStatus( char *state)
   
   return result;
 }
-
