@@ -7,6 +7,9 @@ var requestURL = 'https://spreadsheets.google.com/feeds/list/0Agxrt1aeoXHOdEI5a2
 
 var pin = window.localStorage.getItem('pin');
 
+// URL of the Router -- here protected by pin but if not posting on github, who cares
+var updateURL = "http://" + pin + ".selfip.net:89"
+
 function checkAuth() {
     
     if (pin === null) {
@@ -37,6 +40,8 @@ function checkAuth() {
 
 function handleAuthResult(authResult) {
     var authorizeButton = document.getElementById('authorize-button');
+    var updateButton = document.getElementById('update-button');
+    
     if (authResult && !authResult.error) {
         authorizeButton.style.visibility = 'hidden';
         var xhr = new XMLHttpRequest();
@@ -49,7 +54,6 @@ function handleAuthResult(authResult) {
         xhr.onreadystatechange = function() {
             
             if (xhr.readyState ==4) {
-                
                 var xmlDoc = $.parseXML(xhr.responseText);
                 var $xml = $( xmlDoc );
                 var $timestamp = $xml.find( "gsx\\:timestamp, timestamp" );
@@ -66,6 +70,12 @@ function handleAuthResult(authResult) {
                     var statusCell = $('<td>').text($($status[i]).text());
                     
                     $("#data").append(tRow.append(timeCell).append(sensorCell).append(statusCell));
+                    
+                    // show the update button once data is written
+                    $('#update-button').click(function() {
+                        location.href = updateURL + "/" + $sensor.first().text();
+                    });
+                    updateButton.style.visibility = '';
                     
                 });
                 
