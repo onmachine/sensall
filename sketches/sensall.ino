@@ -4,12 +4,12 @@
 // MAC address
 // Newer Ethernet shields have a MAC address printed on a sticker on the shield
 // Ethernet Shield
-byte mac[] = {  
-  0x90, 0xA2, 0xDA, 0x0D, 0x3F, 0xD1 };
+//byte mac[] = {  
+//  0x90, 0xA2, 0xDA, 0x0D, 0x3F, 0xD1 };
 
 // Ethernet Uno
-//byte mac[] = {  
-//  0x90, 0xA2, 0xDA, 0x0D, 0x60, 0x15 };
+byte mac[] = {  
+  0x90, 0xA2, 0xDA, 0x0D, 0x60, 0x15 };
 
 char serverName[] = "api.pushingbox.com";
 const char devid[] = "v56F4F2A48FCB259"; //Scenario
@@ -60,7 +60,8 @@ void loop() {
     // listen for incoming clients
   EthernetClient serverClient = server.available();
   if (serverClient) {
-    Serial.println("new client");
+    //Serial.println("new client");
+    Serial.print('\n');
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     char request[60]; // handle up to 60 chars
@@ -75,7 +76,7 @@ void loop() {
       
       if (serverClient.available()) {
         char c = serverClient.read();
-        Serial.write(c);
+        //Serial.write(c);
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
@@ -112,6 +113,7 @@ void loop() {
             // if the request is for something I know, broadcast the status request on serial
             // TODO: remove hardcoding and pass off to a parser function.
             if (strcmp(request, "GET /garageDoor HTTP/1.1") == 0) {
+              delay(1000);
               Serial.println("^{id:garageDoor;action:status}");
               validRequest = true;
             }
@@ -133,7 +135,7 @@ void loop() {
     delay(1);
     // close the connection:
     serverClient.stop();
-    Serial.println("client disonnected");
+    //Serial.println("client disonnected");
   }
 
   
