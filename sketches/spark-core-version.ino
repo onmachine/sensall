@@ -1,31 +1,47 @@
+/**
+ ******************************************************************************
+ *  
+ * details: https://github.com/llad/spark-restclient
+ * 
+ * credit: https://github.com/csquared/arduino-restclient
+ * 
+ ******************************************************************************
+
+*/
+
+
+#include "rest_client.h" // see: https://github.com/llad/spark-restclient/
+
 int doorSensor = D0;  // sensor location
 int switchState;         // status of the switch: LOW = closed; HIGH = Open
 int previousSwitchState;  // previous status of the switch
-int counter = 0;
+int counter = 0; // seconds counter to monitor how long door is open
+int warningDelay = 60; // setting for how long to wait before sending a warning
+int ttl = 86400; // Time to Live for events (required but not sure how it benefits me)
+int warningSent = 0; // track if we sent a warning for the open door
 
-char serverName[] = "api.pushingbox.com";
-char devid[] = "yourDevID for Google Form"; //Scenario for update of status
-char alertDevid[] = "yourDevID for Email Alert"; // for the alert email scenario
-char sensorID[] = "garageDoor";
-char topic[] = "yourTopic"; //for spark publish
+char serverName[] = "api.pushingbox.com";  // use pushingbox to send alerts or update google
+char devid[] = "yourPushingBoxDeviceIDforStatus"; //Scenario for update of status
+char alertDevid[] = "yourPushingBoxDeviceIDforAlers"; // for the alert functionality
+char allClearDevID[] = "yourPushingBoxDeviceIDforAllClear"; // for the all clear message on PushingBox
+char sensorID[] = "garageDoor";  // sensor identifier for logging
+char topic[] = "yourTopic-garageDoor"; // topic for the spark publish service
 
-TCPClient client;
-
-boolean lastConnected = false;                 // State of the connection last time through the main loop
-
+RestClient client = RestClient(serverName);
 
 void setup() {
     
-    pinMode( doorSensor, INPUT_PULLUP );
+    pinMode(doorSensor, INPUT_PULLUP);
     Serial.begin(9600);
     switchState = digitalRead( doorSensor ); //read the sensor initially
     previousSwitchState = switchState; //set the previous state
     pushStatus(""); //send the intial status
     
     //Spark API so we can call functions and/or variables
-    Spark.function( "pushStatus", pushStatus );
-    Spark.function( "sendAlert", sendAlert );
-    Spark.variable( "switchState", &switchState, INT );
+    Spark.function("pushStatus", pushStatus);
+    Spark.function("sendAlert", sendAlert);
+    Spark.function("sendAllClear", sendAllClear);
+    Spark.variable("switchState", &switchState, INT);
 
 }
 
@@ -33,104 +49,110 @@ void loop() {
 
     // check the switch state and store value
     switchState = digitalRead(doorSensor);
-
-    // Warnings for open doors at roughly 2,5 and 10 minutes
-    if ( switchState == HIGH ){
-        
-        if (counter == 120 || 600 || 1200) {
-            
-            Spark.publish(topic, "openWarning", 60, PRIVATE);
-            sendStatus("openWarning");
-            sendAlert("");
-        }
-        counter += 1;
-    }
     
-    else counter = 0;
-  
-  
+    
+    // If there was a change in state, send the state
     if (switchState != previousSwitchState) {
         if (switchState == LOW) {
-            Spark.publish( topic, "closed", 60, PRIVATE );
+            Spark.publish( topic, "closed", ttl, PRIVATE );
             sendStatus( "closed" );
         }
         
         else {
-            Spark.publish( topic, "open", 60, PRIVATE );
+            Spark.publish( topic, "open", ttl, PRIVATE );
             sendStatus( "open" );
         }
-        previousSwitchState = switchState;
+        previousSwitchState = switchState; // keeps state from getting sent until next change
 
     }
     
-    if (!client.connected() && lastConnected) {
-        Serial.println();
-        Serial.println("disconnecting.");
-        client.stop();
+
+    // Warning if door is open too long
+    if ( switchState == HIGH ){
+        
+        if ( counter == warningDelay ) {
+            
+            Spark.publish(topic, "openWarning", ttl, PRIVATE);
+            sendStatus("openWarning");
+            sendAlert("");
+            warningSent = 1;
+        }
+        counter += 1;
     }
-    lastConnected = client.connected();
     
-
-    delay(998);  // bounce control and timer, 1000ms is too much
-
-}
-
-void sendStatus(String state){
-    client.stop();
-    
-    Serial.println("connecting ...");
-    if (client.connect(serverName, 80) ) {
-        client.print("GET /pushingbox?devid=");
-        client.print(devid);
-        client.print("&sensorID=");
-        client.print(sensorID);
-        client.print("&status=");
-        client.print(state);
-        client.println(" HTTP/1.1");
-        client.print("Host: ");
-        client.println(serverName);
-        client.println("User-Agent: Arduino");
-        client.println();
-    }
     else {
-        Serial.println("Connection failed");
+        // send an all clear alert if the openWarning was sent but now closed (LOW)
+        if (warningSent == 1) {
+            Spark.publish(topic, "AllClear", ttl, PRIVATE);
+            sendStatus("AllClear");
+            sendAllClear("");
+            warningSent = 0; // reset the warning sent indicator after AllClear
+        }
+        counter = 0;  // reset the counter if door is closed
     }
-    
+  
+    delay(1000);  // bounce control and timer
+
 }
 
-// send email alert through pushingbox
+
+// Triggers the Status update on PushingBox
+void sendStatus(String state){
+    
+    // construct the query string and convert to a char array
+    String path_string = String ("/pushingbox?");
+    path_string = path_string + "devid=" + devid + "&sensorID=" + sensorID + "&status=" + state;
+    char path_char[path_string.length()];
+    path_string.toCharArray(path_char, path_string.length()+1);
+    
+    // make the request
+    String response = "";
+    int statusCode = client.get(path_char, &response);
+
+}
+    
+
+// Triggers the OpenWarning email on PushingBox
 int sendAlert(String args) {
     
-    Serial.println("connecting ...");
-    if (client.connect(serverName, 80) ) {
-        client.print("GET /pushingbox?devid=");
-        client.print(alertDevid);
-        client.println(" HTTP/1.1");
-        client.print("Host: ");
-        client.println(serverName);
-        client.println("User-Agent: Arduino");
-        client.println();
-        
-    }
+    String path_string = String ("/pushingbox?");
+    path_string = path_string + "devid=" + alertDevid;
+    char path_char[path_string.length()];
+    path_string.toCharArray(path_char, path_string.length()+1);
     
-    else {
-        Serial.println("Connection failed");
-    }
-    
+    String response = "";
+    int statusCode = client.get(path_char, &response);
+
     return 1;
 
 }
 
-//  manually push the status to google form/spreadsheet
+// Triggers the allClear email on PushingBox
+int sendAllClear(String args) {
+    
+
+    String path_string = String ("/pushingbox?");
+    path_string = path_string + "devid=" + allClearDevID;
+    char path_char[path_string.length()];
+    path_string.toCharArray(path_char, path_string.length()+1);
+    
+    String response = "";
+    int statusCode = client.get(path_char, &response);
+
+    return 1;
+
+}
+
+// Push the status -- used to instantly check the status.
 int pushStatus(String args) {
     
     if (switchState == LOW) {
-        Spark.publish( topic, "closed", 60, PRIVATE );
-        sendStatus( "closed" );
+        Spark.publish(topic, "closedPushed", ttl, PRIVATE);
+        sendStatus("closed");
     }
     else {
-        Spark.publish( topic, "open", 60, PRIVATE );
-        sendStatus( "open" );
+        Spark.publish(topic, "openPushed", ttl, PRIVATE);
+        sendStatus("open");
     }
     
     return 1;
